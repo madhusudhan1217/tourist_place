@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Itinerary Planner</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Captain+Hook&display=swap" rel="stylesheet">
+    <script>
+        // JavaScript code remains the same as before
+        function fetchCategories() {
+            const city = document.getElementById('city').value;
+            if (city) {
+                fetch('/get_categories', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ city: city })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const categoriesDiv = document.getElementById('available-categories');
+                    categoriesDiv.innerHTML = '<label>Available categories in the city:</label><br>';
+                    data.forEach(category => {
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.name = 'categories';
+                        checkbox.value = category;
+                        checkbox.id = category;
+                        checkbox.onchange = () => { calculateMaxDays(); };
+
+                        const label = document.createElement('label');
+                        label.htmlFor = category;
+                        label.appendChild(document.createTextNode(category));
+
+                        const br = document.createElement('br');
+
+                        categoriesDiv.appendChild(checkbox);
+                        categoriesDiv.appendChild(label);
+                        categoriesDiv.appendChild(br);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function calculateMaxDays() {
+            const city = document.getElementById('city').value;
+            const placesPerDay = parseInt(document.getElementById('places_per_day').value);
+            const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked')).map(el => el.value);
+
+            if (city && placesPerDay && selectedCategories.length > 0) {
+                fetch('/calculate_max_days', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ city: city, places_per_day: placesPerDay, selected_categories: selectedCategories })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const maxDaysDiv = document.getElementById('max-days');
+                    maxDaysDiv.textContent = `Based on ${placesPerDay} places per day, you can cover the places in a maximum of ${data.max_days} days.`;
+
+                    const numDays = parseInt(document.getElementById('num_days').value);
+                    if (numDays > data.max_days) {
+                        showAdditionalCategories();
+                    } else {
+                        document.getElementById('additional-categories').style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function showAdditionalCategories() {
+            const city = document.getElementById('city').value;
+
+            fetch('/get_categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ city: city })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const additionalCategoriesDiv = document.getElementById('additional-categories');
+                additionalCategoriesDiv.style.display = 'block';
+                const additionalCategoriesList = document.getElementById('additional-categories-list');
+                additionalCategoriesList.innerHTML = '';
+
+                const selectedCategories = Array.from(document.querySelectorAll('input[name="categories"]:checked')).map(el => el.value);
+                
+                data.forEach(category => {
+                    if (!selectedCategories.includes(category)) {
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.name = 'additional_categories';
+                        checkbox.value = category;
+                        checkbox.id = 'additional_' + category;
+
+                        const label = document.createElement('label');
+                        label.htmlFor = 'additional_' + category;
+                        label.appendChild(document.createTextNode(category));
+
+                        const br = document.createElement('br');
+
+                        additionalCategoriesList.appendChild(checkbox);
+                        additionalCategoriesList.appendChild(label);
+                        additionalCategoriesList.appendChild(br);
+                    }
+                });
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
+    <style>
+        body {
+            padding: 20px;
+            font-family: 'Montserrat', sans-serif;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .map-container {
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 10px;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: #fff;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .card-header h3 {
+            margin-bottom: 0;
+            font-weight: 600;
+        }
+        .list-group-item {
+            border-color: #dee2e6;
+            padding: 1rem;
+        }
+        .list-group-item h5 {
+            font-weight: 500;
+            color: #007bff;
+            font-family: 'Captain Hook', cursive;
+            font-size: 1.5rem;
+        }
+        .list-group-item p {
+            margin-bottom: 0.5rem;
+        }
+        @media (max-width: 767px) {
+            .map-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h1 class="mb-4 text-center">Travel Itinerary Planner</h1>
+                <form method="post">
+                    <div class="form-group">
+                        <label for="city">Enter the city name:</label>
+                        <select class="form-control" id="city" name="city" onchange="fetchCategories()" required>
+                            <option value="" disabled selected>Select a city</option>
+                            {% for city in available_cities %}
+                                <option value="{{ city }}">{{ city }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="available-categories"></div>
+                    <div class="form-group">
+                        <label for="places_per_day">Enter the number of places per day: (Rec. 3)</label>
+                        <input type="number" class="form-control" id="places_per_day" name="places_per_day" oninput="calculateMaxDays()" required>
+                    </div>
+                    <div id="max-days"></div>
+                    <div class="form-group">
+                        <label for="num_days">Enter the number of days:</label>
+                        <input type="number" class="form-control" id="num_days" name="num_days" oninput="calculateMaxDays()" required>
+                    </div>
+                    <div id="additional-categories" class="form-group" style="display: none;">
+                        <label>Select additional categories:</label>
+                        <div id="additional-categories-list"></div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Get Itinerary</button>
+                    </div>
+                </form>
+
+                {% if itinerary %}
+                <div class="mt-4">
+                    <h2 class="mb-4">Itinerary</h2>
+                    {% if available_days > 0 %}
+                        {% for day in range(1, available_days+1) %}
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h3 class="mb-0"><i class="fas fa-calendar-alt mr-2"></i>Day {{ day }}</h3>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="list-group">
+                                        {% for place in itinerary[day-1] %}
+                                            <li class="list-group-item">
+                                                <h5 class="mb-1"><i class="fas fa-map-marker-alt mr-2"></i>{{ place['Place_Name'] }}</h5>
+                                                <p class="mb-1"><i class="fas fa-tags mr-2"></i>Categories: {{ place['Categories'] }}</p>
+                                                <p><i class="fas fa-info-circle mr-2"></i>Description: {{ place['Place_desc'] }}</p>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% if maps %}
+                                <div class="card-footer">
+                                    <h4 class="mb-0"><i class="fas fa-map mr-2"></i>Day {{ day }} Map</h4>
+                                    <div class="map-container">
+                                        {{ maps[day-1].get_root().render() | safe }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No places available for the selected criteria.</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
